@@ -1,7 +1,7 @@
 import { Prompt, ChatMessage } from './types/Prompt';
 import PromptSelector from './components/PromptSelector';
 import PromptEditor from './components/PromptEditor';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import TextInput from './components/TextInput';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
@@ -23,7 +23,7 @@ const App: React.FC = () => {
         { id: '1', label: '概念を説明する', value: '概を説明してください:', isSystemInstruction: true },
         { id: '2', label: '要約を生成する', value: '要約を生成してください:', isSystemInstruction: true },
         { id: '3', label: '例を提供する', value: '例を提供してください:', isSystemInstruction: true },
-        { id: '4', label: 'コミットメッセージを生成する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
+        { id: '4', label: 'コミット���ッセージを生成する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
     ]);
 
     const geminiClient = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? '');
@@ -31,6 +31,15 @@ const App: React.FC = () => {
         apiKey: process.env.OPENAI_API_KEY ?? '',
         dangerouslyAllowBrowser: true
     });
+
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+
+    // チャット履歴が更新されたときに最下部にスクロール
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [chatHistory]);
 
     const handlePromptSelect = (prompt: Prompt) => {
         // 表示と履歴をクリア
@@ -142,7 +151,7 @@ const App: React.FC = () => {
             setResponseText(responseText);
             setTokenCount(totalTokens);
         } catch (error) {
-            console.error('Gemini APIとの通信中にエラーが発生しました:', error);
+            console.error('Gemini APIとの通信中にエラーが発生しま���た:', error);
             setResponseText('Gemini APIとの通信中にエラーが発生しました。');
             throw error;
         }
@@ -211,7 +220,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* チャット履歴（スクロール可能な領域） */}
-                <div className="flex-1 overflow-y-auto p-4">
+                <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4">
                     <div className="space-y-4">
                         {chatHistory.map((message, index) => (
                             <div
