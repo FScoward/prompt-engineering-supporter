@@ -3,6 +3,8 @@ import PromptSelector from './components/PromptSelector';
 import React, { useState } from 'react';
 import TextInput from './components/TextInput';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const App: React.FC = () => {
     const [responseText, setResponseText] = useState<string>('');
@@ -15,7 +17,7 @@ const App: React.FC = () => {
         { id: '1', label: '概念を説明する', value: '概念を説明してください:', isSystemInstruction: true },
         { id: '2', label: '要約を生成する', value: '要約を生成してください:', isSystemInstruction: true },
         { id: '3', label: '例を提供する', value: '例を提供してください:', isSystemInstruction: true },
-        { id: '4', label: 'コミットメッセージを生成する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
+        { id: '4', label: 'コミットメッセージを生���する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
     ];
 
     const handlePromptSelect = (prompt: Prompt) => {
@@ -93,7 +95,7 @@ const App: React.FC = () => {
             const totalTokens = tokenCountResult.totalTokens;
 
             console.log('リクエスト:', JSON.stringify(request, null, 2));
-            console.log('レスポンス:', JSON.stringify(response, null, 2));
+            console.log('レス���ンス:', JSON.stringify(response, null, 2));
             console.log('生成されたテキスト:', responseText);
             console.log('トークン数:', totalTokens);
 
@@ -148,7 +150,26 @@ const App: React.FC = () => {
                                         {message.timestamp.toLocaleTimeString()}
                                     </span>
                                 </div>
-                                <p className="whitespace-pre-wrap">{message.content}</p>
+                                <div className="prose prose-sm max-w-none">
+                                    <ReactMarkdown 
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            pre: ({ children, ...props }) => (
+                                                <div className="overflow-auto bg-gray-800 text-white p-4 rounded-md my-2">
+                                                    <pre {...props}>{children}</pre>
+                                                </div>
+                                            ),
+                                            code: ({ children, className, ...props }) => {
+                                                const isInline = !className;
+                                                return isInline 
+                                                    ? <code className="bg-gray-200 px-1 rounded" {...props}>{children}</code>
+                                                    : <code {...props}>{children}</code>;
+                                            }
+                                        }}
+                                    >
+                                        {message.content}
+                                    </ReactMarkdown>
+                                </div>
                             </div>
                         ))}
                         {isLoading && (
@@ -180,9 +201,26 @@ const App: React.FC = () => {
                                     }, null, 2)}
                                 </pre>
                                 <h4 className="font-bold mt-4">Response:</h4>
-                                <pre className="whitespace-pre-wrap overflow-x-auto">
-                                    {responseText}
-                                </pre>
+                                <div className="prose prose-sm max-w-none">
+                                    <ReactMarkdown 
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            pre: ({ children, ...props }) => (
+                                                <div className="overflow-auto bg-gray-800 text-white p-4 rounded-md my-2">
+                                                    <pre {...props}>{children}</pre>
+                                                </div>
+                                            ),
+                                            code: ({ children, className, ...props }) => {
+                                                const isInline = !className;
+                                                return isInline 
+                                                    ? <code className="bg-gray-200 px-1 rounded" {...props}>{children}</code>
+                                                    : <code {...props}>{children}</code>;
+                                            }
+                                        }}
+                                    >
+                                        {responseText}
+                                    </ReactMarkdown>
+                                </div>
                             </div>
                         </div>
                     </div>
