@@ -3,6 +3,8 @@ import { Prompt, PromptVersion } from '../types/Prompt';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
 import { diffChars } from 'diff';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Props {
     prompt: Prompt | null;
@@ -17,6 +19,14 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
     const [width, setWidth] = useState(384);
     const [isResizing, setIsResizing] = useState(false);
     const [selectedVersion, setSelectedVersion] = useState<PromptVersion | null>(null);
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
+    const [editingValue, setEditingValue] = useState('');
+
+    React.useEffect(() => {
+        if (prompt) {
+            setEditingValue(prompt.value);
+        }
+    }, [prompt]);
 
     const startResizing = useCallback((e: React.MouseEvent) => {
         setIsResizing(true);
@@ -54,7 +64,7 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
         const editedPrompt: Prompt = {
             ...prompt,
             label: formData.get('label') as string,
-            value: formData.get('value') as string,
+            value: editingValue,
         };
         onSave(editedPrompt, createNewVersion);
         setCreateNewVersion(false);
@@ -143,15 +153,48 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                プロンプト内容
-                            </label>
-                            <Textarea
-                                name="value"
-                                defaultValue={prompt.value}
-                                className="w-full bg-white text-gray-900"
-                                rows={8}
-                            />
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    プロンプト内容
+                                </label>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsPreviewMode(!isPreviewMode)}
+                                >
+                                    {isPreviewMode ? 'エディタ' : 'プレビュー'}
+                                </Button>
+                            </div>
+                            {isPreviewMode ? (
+                                <div className="min-h-[200px] p-4 border rounded-md bg-white text-gray-900 prose prose-sm max-w-none">
+                                    <ReactMarkdown 
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            pre: ({ children, ...props }) => (
+                                                <div className="overflow-auto bg-gray-800 text-white p-4 rounded-md my-2">
+                                                    <pre {...props}>{children}</pre>
+                                                </div>
+                                            ),
+                                            code: ({ children, className, ...props }) => {
+                                                const isInline = !className;
+                                                return isInline 
+                                                    ? <code className="bg-gray-200 px-1 rounded" {...props}>{children}</code>
+                                                    : <code {...props}>{children}</code>;
+                                            }
+                                        }}
+                                    >
+                                        {editingValue}
+                                    </ReactMarkdown>
+                                </div>
+                            ) : (
+                                <Textarea
+                                    value={editingValue}
+                                    onChange={(e) => setEditingValue(e.target.value)}
+                                    className="w-full bg-white text-gray-900 font-mono"
+                                    rows={8}
+                                />
+                            )}
                         </div>
                         <label className="flex items-center space-x-2">
                             <input
@@ -190,7 +233,11 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
                                     </div>
                                     <div className="text-sm text-gray-700">
                                         <p className="font-medium">ラベル: {version.label}</p>
-                                        <p className="mt-2 whitespace-pre-wrap">{version.value}</p>
+                                        <div className="mt-2 prose prose-sm max-w-none">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {version.value}
+                                            </ReactMarkdown>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
