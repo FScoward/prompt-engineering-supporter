@@ -73,14 +73,15 @@ const App: React.FC = () => {
         try {
             const model = client.getGenerativeModel({ model: 'gemini-pro' });
 
-            // チャット履歴からシステムメッセージを取得
-            const systemMessages = chatHistory
-                .filter(msg => msg.role === 'system')
-                .map(msg => ({ role: "user", parts: [{ text: msg.content }] }));
+            // チャット履歴を変換
+            const convertedHistory = chatHistory.map(msg => ({
+                role: msg.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: msg.content }]
+            }));
 
             const request = {
                 contents: [
-                    ...systemMessages,
+                    ...convertedHistory,
                     { role: "user", parts: [{ text }] }
                 ],
             };
@@ -95,7 +96,7 @@ const App: React.FC = () => {
             const totalTokens = tokenCountResult.totalTokens;
 
             console.log('リクエスト:', JSON.stringify(request, null, 2));
-            console.log('レス���ンス:', JSON.stringify(response, null, 2));
+            console.log('レスポンス:', JSON.stringify(response, null, 2));
             console.log('生成されたテキスト:', responseText);
             console.log('トークン数:', totalTokens);
 
@@ -112,7 +113,7 @@ const App: React.FC = () => {
         } catch (error) {
             console.error('Gemini APIとの通信中にエラーが発生しました:', error);
             setResponseText('Gemini APIとの通信中にエラーが発生しました。');
-            throw error; // Re-throw to handle in the calling function
+            throw error;
         }
     };
 
@@ -193,9 +194,10 @@ const App: React.FC = () => {
                                 <pre className="whitespace-pre-wrap overflow-x-auto">
                                     {JSON.stringify({ 
                                         contents: [
-                                            ...chatHistory
-                                                .filter(msg => msg.role === 'system')
-                                                .map(msg => ({ role: "user", parts: [{ text: msg.content }] })),
+                                            ...chatHistory.map(msg => ({
+                                                role: msg.role === 'assistant' ? 'model' : 'user',
+                                                parts: [{ text: msg.content }]
+                                            })),
                                             { role: "user", parts: [{ text: inputText }] }
                                         ]
                                     }, null, 2)}
