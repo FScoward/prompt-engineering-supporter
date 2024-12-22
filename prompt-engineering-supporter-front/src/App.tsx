@@ -7,6 +7,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Button } from './components/ui/button';
 
 type ApiType = 'gemini' | 'chatgpt';
 
@@ -23,7 +24,7 @@ const App: React.FC = () => {
         { id: '1', label: '概念を説明する', value: '概を説明してください:', isSystemInstruction: true },
         { id: '2', label: '要約を生成する', value: '要約を生成してください:', isSystemInstruction: true },
         { id: '3', label: '例を提供する', value: '例を提供してください:', isSystemInstruction: true },
-        { id: '4', label: 'コミット���ッセージを生成する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
+        { id: '4', label: 'コミットメッセージを生成する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
     ]);
 
     const geminiClient = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? '');
@@ -42,7 +43,7 @@ const App: React.FC = () => {
     }, [chatHistory]);
 
     const handlePromptSelect = (prompt: Prompt) => {
-        // 表示と履歴をクリア
+        // ��示と履歴をクリア
         setResponseText('');
         setTokenCount(0);
         setChatHistory([]);
@@ -64,7 +65,15 @@ const App: React.FC = () => {
     };
 
     const handleSavePrompt = (editedPrompt: Prompt) => {
-        setPrompts(prev => prev.map(p => p.id === editedPrompt.id ? editedPrompt : p));
+        // 既存のプロンプトの場合は更新、新規の場合は追加
+        setPrompts(prev => {
+            const exists = prev.some(p => p.id === editedPrompt.id);
+            if (exists) {
+                return prev.map(p => p.id === editedPrompt.id ? editedPrompt : p);
+            } else {
+                return [...prev, editedPrompt];
+            }
+        });
         setIsEditorOpen(false);
     };
 
@@ -151,7 +160,7 @@ const App: React.FC = () => {
             setResponseText(responseText);
             setTokenCount(totalTokens);
         } catch (error) {
-            console.error('Gemini APIとの通信中にエラーが発生しま���た:', error);
+            console.error('Gemini APIとの通信中にエラーが発生しました:', error);
             setResponseText('Gemini APIとの通信中にエラーが発生しました。');
             throw error;
         }
@@ -202,7 +211,23 @@ const App: React.FC = () => {
             <div className="w-full max-w-4xl flex flex-col h-screen">
                 {/* ヘッダー部分 */}
                 <div className="p-4 border-b">
-                    <h1 className="text-2xl font-bold mb-4">Prompt Selector</h1>
+                    <div className="flex justify-between items-center mb-4">
+                        <h1 className="text-2xl font-bold">Prompt Selector</h1>
+                        <Button
+                            onClick={() => {
+                                setSelectedPrompt({
+                                    id: (prompts.length + 1).toString(),
+                                    label: '新しいプロンプト',
+                                    value: '',
+                                    isSystemInstruction: true
+                                });
+                                setIsEditorOpen(true);
+                            }}
+                            variant="outline"
+                        >
+                            新規プロンプト作成
+                        </Button>
+                    </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             使用するAPI
