@@ -1,5 +1,6 @@
 import { Prompt, ChatMessage } from './types/Prompt';
 import PromptSelector from './components/PromptSelector';
+import PromptEditor from './components/PromptEditor';
 import React, { useState } from 'react';
 import TextInput from './components/TextInput';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -15,14 +16,15 @@ const App: React.FC = () => {
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isEditorOpen, setIsEditorOpen] = useState<boolean>(false);
+    const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
     const [selectedApi, setSelectedApi] = useState<ApiType>('gemini');
-
-    const prompts: Prompt[] = [
+    const [prompts, setPrompts] = useState<Prompt[]>([
         { id: '1', label: '概念を説明する', value: '概念を説明してください:', isSystemInstruction: true },
         { id: '2', label: '要約を生成する', value: '要約を生成してください:', isSystemInstruction: true },
         { id: '3', label: '例を提供する', value: '例を提供してください:', isSystemInstruction: true },
         { id: '4', label: 'コミットメッセージを生成する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
-    ];
+    ]);
 
     const geminiClient = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? '');
     const openaiClient = new OpenAI({
@@ -31,9 +33,9 @@ const App: React.FC = () => {
     });
 
     const handlePromptSelect = (prompt: Prompt) => {
-        console.log('Selected Prompt:', prompt);
+        setSelectedPrompt(prompt);
+        setIsEditorOpen(true);
 
-        // システムインストラクションをチャット履歴に追加
         if (prompt.isSystemInstruction) {
             const systemMessage: ChatMessage = {
                 role: 'system',
@@ -42,6 +44,11 @@ const App: React.FC = () => {
             };
             setChatHistory(prev => [...prev, systemMessage]);
         }
+    };
+
+    const handleSavePrompt = (editedPrompt: Prompt) => {
+        setPrompts(prev => prev.map(p => p.id === editedPrompt.id ? editedPrompt : p));
+        setIsEditorOpen(false);
     };
 
     const handleApiChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -311,6 +318,13 @@ const App: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            <PromptEditor
+                prompt={selectedPrompt}
+                isOpen={isEditorOpen}
+                onClose={() => setIsEditorOpen(false)}
+                onSave={handleSavePrompt}
+            />
         </div>
     );
 };
