@@ -15,8 +15,17 @@ const TextInput: React.FC<Props> = ({ onSubmit, disabled }) => {
     };
 
     const handleSubmit = () => {
-        onSubmit(text);
-        setText('');
+        if (text.trim() && !disabled) {
+            onSubmit(text);
+            setText('');
+        }
+    };
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            handleSubmit();
+        }
     };
 
     return (
@@ -25,13 +34,14 @@ const TextInput: React.FC<Props> = ({ onSubmit, disabled }) => {
                 className="w-full"
                 value={text}
                 onChange={handleTextChange}
-                placeholder="ここにテキストを入力してください"
+                onKeyDown={handleKeyDown}
+                placeholder="ここにテキストを入力してください (Ctrl + Enter で送信)"
                 disabled={disabled}
             />
             <Button
                 className="mt-2"
                 onClick={handleSubmit}
-                disabled={disabled}
+                disabled={disabled || !text.trim()}
             >
                 送信
             </Button>
