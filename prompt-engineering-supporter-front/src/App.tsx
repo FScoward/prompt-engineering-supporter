@@ -9,6 +9,7 @@ const App: React.FC = () => {
     const [tokenCount, setTokenCount] = useState<number>(0);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState<string>('');
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const prompts: Prompt[] = [
         { id: '1', label: '概念を説明する', value: '概念を説明してください:', isSystemInstruction: true },
@@ -36,6 +37,7 @@ const App: React.FC = () => {
         console.log('Submitted Text:', text);
         setResponseText(''); // Reset response text
         setTokenCount(0); // Reset token count
+        setIsLoading(true); // Start loading
 
         // Add user message to chat history
         const userMessage: ChatMessage = {
@@ -58,6 +60,8 @@ const App: React.FC = () => {
                 timestamp: new Date()
             };
             setChatHistory(prev => [...prev, errorMessage]);
+        } finally {
+            setIsLoading(false); // End loading
         }
     };
 
@@ -106,6 +110,7 @@ const App: React.FC = () => {
         } catch (error) {
             console.error('Gemini APIとの通信中にエラーが発生しました:', error);
             setResponseText('Gemini APIとの通信中にエラーが発生しました。');
+            throw error; // Re-throw to handle in the calling function
         }
     };
 
@@ -114,7 +119,7 @@ const App: React.FC = () => {
             <div className="p-5 w-full max-w-4xl">
                 <h1 className="text-2xl font-bold mb-4">Prompt Selector</h1>
                 <PromptSelector prompts={prompts} onSelect={handlePromptSelect} />
-                <TextInput onSubmit={handleTextSubmit} />
+                <TextInput onSubmit={handleTextSubmit} disabled={isLoading} />
                 
                 {/* チャット履歴の表示 */}
                 <div className="mt-8">
@@ -146,6 +151,12 @@ const App: React.FC = () => {
                                 <p className="whitespace-pre-wrap">{message.content}</p>
                             </div>
                         ))}
+                        {isLoading && (
+                            <div className="flex items-center justify-center p-4 bg-gray-50 rounded-lg">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                                <span className="ml-3">応答を生成中...</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 

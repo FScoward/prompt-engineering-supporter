@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button"
 
 interface Props {
     onSubmit: (text: string) => void;
+    disabled?: boolean;
 }
 
-const TextInput: React.FC<Props> = ({ onSubmit }) => {
+const TextInput: React.FC<Props> = ({ onSubmit, disabled }) => {
     const [text, setText] = React.useState('');
 
     const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -25,10 +26,12 @@ const TextInput: React.FC<Props> = ({ onSubmit }) => {
                 value={text}
                 onChange={handleTextChange}
                 placeholder="ここにテキストを入力してください"
+                disabled={disabled}
             />
             <Button
                 className="mt-2"
                 onClick={handleSubmit}
+                disabled={disabled}
             >
                 送信
             </Button>
