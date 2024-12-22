@@ -20,7 +20,7 @@ const App: React.FC = () => {
     const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
     const [selectedApi, setSelectedApi] = useState<ApiType>('gemini');
     const [prompts, setPrompts] = useState<Prompt[]>([
-        { id: '1', label: '概念を説明する', value: '概念を説明してください:', isSystemInstruction: true },
+        { id: '1', label: '概念を説明する', value: '概を説明してください:', isSystemInstruction: true },
         { id: '2', label: '要約を生成する', value: '要約を生成してください:', isSystemInstruction: true },
         { id: '3', label: '例を提供する', value: '例を提供してください:', isSystemInstruction: true },
         { id: '4', label: 'コミットメッセージを生成する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
@@ -33,16 +33,24 @@ const App: React.FC = () => {
     });
 
     const handlePromptSelect = (prompt: Prompt) => {
+        // 表示と履歴をクリア
+        setResponseText('');
+        setTokenCount(0);
+        setChatHistory([]);
+        setInputText('');
+
+        // プロンプトエディタを開く
         setSelectedPrompt(prompt);
         setIsEditorOpen(true);
 
+        // システムプロンプトを設定
         if (prompt.isSystemInstruction) {
             const systemMessage: ChatMessage = {
                 role: 'system',
                 content: prompt.value,
                 timestamp: new Date()
             };
-            setChatHistory(prev => [...prev, systemMessage]);
+            setChatHistory([systemMessage]);
         }
     };
 
@@ -181,28 +189,29 @@ const App: React.FC = () => {
     }
 
     return (
-        <div className="flex justify-center items-center min-h-screen">
-            <div className="p-5 w-full max-w-4xl">
-                <h1 className="text-2xl font-bold mb-4">Prompt Selector</h1>
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        使用するAPI
-                    </label>
-                    <select
-                        value={selectedApi}
-                        onChange={handleApiChange}
-                        className="block w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
-                    >
-                        <option value="gemini">Gemini</option>
-                        <option value="chatgpt">ChatGPT</option>
-                    </select>
+        <div className="flex justify-center min-h-screen">
+            <div className="w-full max-w-4xl flex flex-col h-screen">
+                {/* ヘッダー部分 */}
+                <div className="p-4 border-b">
+                    <h1 className="text-2xl font-bold mb-4">Prompt Selector</h1>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            使用するAPI
+                        </label>
+                        <select
+                            value={selectedApi}
+                            onChange={handleApiChange}
+                            className="block w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
+                        >
+                            <option value="gemini">Gemini</option>
+                            <option value="chatgpt">ChatGPT</option>
+                        </select>
+                    </div>
+                    <PromptSelector prompts={prompts} onSelect={handlePromptSelect} />
                 </div>
-                <PromptSelector prompts={prompts} onSelect={handlePromptSelect} />
-                <TextInput onSubmit={handleTextSubmit} disabled={isLoading} />
-                
-                {/* チャット履歴の表示 */}
-                <div className="mt-8">
-                    <h2 className="text-xl font-bold mb-4">Chat History</h2>
+
+                {/* チャット履歴（スクロール可能な領域） */}
+                <div className="flex-1 overflow-y-auto p-4">
                     <div className="space-y-4">
                         {chatHistory.map((message, index) => (
                             <div
@@ -258,65 +267,10 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                {/* API Communication Info */}
-                {responseText && (
-                    <div className="mt-4">
-                        <h2 className="text-lg font-bold mb-2">API Info:</h2>
-                        <p className="mt-2">Token Count: {tokenCount}</p>
-                        <div className="mt-4">
-                            <h3 className="text-lg font-bold mb-2">API Communication:</h3>
-                            <div className="bg-gray-100 p-4 rounded-md">
-                                <h4 className="font-bold">Request:</h4>
-                                <pre className="whitespace-pre-wrap overflow-x-auto">
-                                    {JSON.stringify(
-                                        selectedApi === 'gemini'
-                                            ? {
-                                                contents: [
-                                                    ...chatHistory.map(msg => ({
-                                                        role: msg.role === 'assistant' ? 'model' : 'user',
-                                                        parts: [{ text: msg.content }]
-                                                    })),
-                                                    { role: "user", parts: [{ text: inputText }] }
-                                                ]
-                                            }
-                                            : {
-                                                messages: [
-                                                    ...chatHistory.map(msg => ({
-                                                        role: msg.role,
-                                                        content: msg.content
-                                                    })),
-                                                    { role: 'user', content: inputText }
-                                                ]
-                                            },
-                                        null,
-                                        2
-                                    )}
-                                </pre>
-                                <h4 className="font-bold mt-4">Response:</h4>
-                                <div className="prose prose-sm max-w-none">
-                                    <ReactMarkdown 
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            pre: ({ children, ...props }) => (
-                                                <div className="overflow-auto bg-gray-800 text-white p-4 rounded-md my-2">
-                                                    <pre {...props}>{children}</pre>
-                                                </div>
-                                            ),
-                                            code: ({ children, className, ...props }) => {
-                                                const isInline = !className;
-                                                return isInline 
-                                                    ? <code className="bg-gray-200 px-1 rounded" {...props}>{children}</code>
-                                                    : <code {...props}>{children}</code>;
-                                            }
-                                        }}
-                                    >
-                                        {responseText}
-                                    </ReactMarkdown>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {/* 入力欄（画面下部に固定） */}
+                <div className="border-t p-4 bg-white">
+                    <TextInput onSubmit={handleTextSubmit} disabled={isLoading} />
+                </div>
             </div>
 
             <PromptEditor
