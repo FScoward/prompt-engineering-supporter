@@ -1,16 +1,50 @@
-import React from 'react';
-import { Prompt } from '../types/Prompt';
+import React, { useState, useCallback } from 'react';
+import { Prompt, PromptVersion } from '../types/Prompt';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
 
 interface Props {
     prompt: Prompt | null;
+    versions: PromptVersion[];
     isOpen: boolean;
     onClose: () => void;
-    onSave: (editedPrompt: Prompt) => void;
+    onSave: (editedPrompt: Prompt, createNewVersion: boolean) => void;
 }
 
-const PromptEditor: React.FC<Props> = ({ prompt, isOpen, onClose, onSave }) => {
+const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSave }) => {
+    const [createNewVersion, setCreateNewVersion] = useState(false);
+    const [width, setWidth] = useState(384); // 初期幅: 384px (w-96)
+    const [isResizing, setIsResizing] = useState(false);
+
+    const startResizing = useCallback((e: React.MouseEvent) => {
+        setIsResizing(true);
+        e.preventDefault();
+    }, []);
+
+    const stopResizing = useCallback(() => {
+        setIsResizing(false);
+    }, []);
+
+    const resize = useCallback((e: MouseEvent) => {
+        if (isResizing) {
+            const newWidth = window.innerWidth - e.clientX;
+            // 最小幅と最大幅を設定
+            const clampedWidth = Math.min(Math.max(newWidth, 320), window.innerWidth * 0.8);
+            setWidth(clampedWidth);
+        }
+    }, [isResizing]);
+
+    React.useEffect(() => {
+        if (isResizing) {
+            window.addEventListener('mousemove', resize);
+            window.addEventListener('mouseup', stopResizing);
+        }
+        return () => {
+            window.removeEventListener('mousemove', resize);
+            window.removeEventListener('mouseup', stopResizing);
+        };
+    }, [isResizing, resize, stopResizing]);
+
     if (!isOpen || !prompt) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -21,50 +55,96 @@ const PromptEditor: React.FC<Props> = ({ prompt, isOpen, onClose, onSave }) => {
             label: formData.get('label') as string,
             value: formData.get('value') as string,
         };
-        onSave(editedPrompt);
+        onSave(editedPrompt, createNewVersion);
+        setCreateNewVersion(false); // リセット
     };
 
     return (
-        <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-lg p-4 overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">プロンプト編集</h2>
-                <Button 
-                    variant="outline" 
-                    onClick={onClose}
-                    className="text-gray-500 hover:text-gray-700"
-                >
-                    ✕
-                </Button>
-            </div>
-            <form onSubmit={handleSubmit}>
-                <div className="space-y-4">
+        <div 
+            className="fixed right-0 top-0 h-full bg-white shadow-lg overflow-hidden flex"
+            style={{ width: `${width}px` }}
+        >
+            {/* リサイズハンドル */}
+            <div
+                className="w-1 h-full cursor-ew-resize bg-gray-200 hover:bg-gray-300 active:bg-gray-400"
+                onMouseDown={startResizing}
+            />
+            
+            <div className="flex-1 p-4 overflow-y-auto">
+                <div className="flex justify-between items-center mb-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            ラベル
-                        </label>
-                        <input
-                            name="label"
-                            type="text"
-                            defaultValue={prompt.label}
-                            className="w-full px-3 py-2 border rounded-md bg-white text-gray-900"
-                        />
+                        <h2 className="text-xl font-bold">プロンプト編集</h2>
+                        <p className="text-sm text-gray-500">バージョン: {prompt.version}</p>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            プロンプト内容
-                        </label>
-                        <Textarea
-                            name="value"
-                            defaultValue={prompt.value}
-                            className="w-full bg-white text-gray-900"
-                            rows={8}
-                        />
-                    </div>
-                    <Button type="submit" className="w-full">
-                        保存
+                    <Button 
+                        variant="outline" 
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-700"
+                    >
+                        ✕
                     </Button>
                 </div>
-            </form>
+                <form onSubmit={handleSubmit}>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                ラ���ル
+                            </label>
+                            <input
+                                name="label"
+                                type="text"
+                                defaultValue={prompt.label}
+                                className="w-full px-3 py-2 border rounded-md bg-white text-gray-900"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                プロンプト内容
+                            </label>
+                            <Textarea
+                                name="value"
+                                defaultValue={prompt.value}
+                                className="w-full bg-white text-gray-900"
+                                rows={8}
+                            />
+                        </div>
+                        <label className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                checked={createNewVersion}
+                                onChange={(e) => setCreateNewVersion(e.target.checked)}
+                                className="rounded border-gray-300"
+                            />
+                            <span className="text-sm text-gray-700">新しいバージョンとして保存</span>
+                        </label>
+                        <Button type="submit" className="w-full">
+                            保存
+                        </Button>
+                    </div>
+                </form>
+
+                {versions.length > 0 && (
+                    <div className="mt-8">
+                        <h3 className="text-lg font-bold mb-4">バージョン履歴</h3>
+                        <div className="space-y-4">
+                            {versions.map((version) => (
+                                <div key={version.version} className="p-4 border rounded-lg">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="font-medium">バージョン {version.version}</span>
+                                        <span className="text-sm text-gray-500">
+                                            {version.createdAt.toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-gray-700">
+                                        <p className="font-medium">ラベル: {version.label}</p>
+                                        <p className="mt-2 whitespace-pre-wrap">{version.value}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

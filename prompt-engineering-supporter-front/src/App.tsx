@@ -1,4 +1,4 @@
-import { Prompt, ChatMessage } from './types/Prompt';
+import { Prompt, ChatMessage, PromptVersion } from './types/Prompt';
 import PromptSelector from './components/PromptSelector';
 import PromptEditor from './components/PromptEditor';
 import React, { useState, useRef, useEffect } from 'react';
@@ -20,11 +20,44 @@ const App: React.FC = () => {
     const [isEditorOpen, setIsEditorOpen] = useState<boolean>(false);
     const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
     const [selectedApi, setSelectedApi] = useState<ApiType>('gemini');
+    const [promptVersions, setPromptVersions] = useState<PromptVersion[]>([]);
     const [prompts, setPrompts] = useState<Prompt[]>([
-        { id: '1', label: '概念を説明する', value: '概を説明してください:', isSystemInstruction: true },
-        { id: '2', label: '要約を生成する', value: '要約を生成してください:', isSystemInstruction: true },
-        { id: '3', label: '例を提供する', value: '例を提供してください:', isSystemInstruction: true },
-        { id: '4', label: 'コミットメッセージを生成する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
+        { 
+            id: '1', 
+            label: '概念を説明する', 
+            value: '概念を説明してください:', 
+            isSystemInstruction: true,
+            version: 1,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        },
+        { 
+            id: '2', 
+            label: '要約を生成する', 
+            value: '要約を生成してください:', 
+            isSystemInstruction: true,
+            version: 1,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        },
+        { 
+            id: '3', 
+            label: '例を提供する', 
+            value: '例を提供してください:', 
+            isSystemInstruction: true,
+            version: 1,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        },
+        { 
+            id: '4', 
+            label: 'コミットメッセージを生成する', 
+            value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', 
+            isSystemInstruction: true,
+            version: 1,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        },
     ]);
 
     const geminiClient = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? '');
@@ -43,7 +76,7 @@ const App: React.FC = () => {
     }, [chatHistory]);
 
     const handlePromptSelect = (prompt: Prompt) => {
-        // ��示と履歴をクリア
+        // 表示と履歴をクリア
         setResponseText('');
         setTokenCount(0);
         setChatHistory([]);
@@ -51,7 +84,10 @@ const App: React.FC = () => {
 
         // プロンプトエディタを開く
         setSelectedPrompt(prompt);
-        setIsEditorOpen(true);
+        setIsEditorOpen(false); // 一度閉じる
+        setTimeout(() => {
+            setIsEditorOpen(true); // 再度開く
+        }, 0);
 
         // システムプロンプトを設定
         if (prompt.isSystemInstruction) {
@@ -64,17 +100,61 @@ const App: React.FC = () => {
         }
     };
 
-    const handleSavePrompt = (editedPrompt: Prompt) => {
-        // 既存のプロンプトの場合は更新、新規の場合は追加
-        setPrompts(prev => {
-            const exists = prev.some(p => p.id === editedPrompt.id);
-            if (exists) {
-                return prev.map(p => p.id === editedPrompt.id ? editedPrompt : p);
+    const handleSavePrompt = (editedPrompt: Prompt, createNewVersion: boolean) => {
+        const now = new Date();
+        
+        // 既存のプロンプトの場合
+        if (prompts.some(p => p.id === editedPrompt.id)) {
+            if (createNewVersion) {
+                // 現在のバージョンを履歴に保存
+                const currentPrompt = prompts.find(p => p.id === editedPrompt.id);
+                if (currentPrompt) {
+                    const versionHistory: PromptVersion = {
+                        promptId: currentPrompt.id,
+                        version: currentPrompt.version,
+                        label: currentPrompt.label,
+                        value: currentPrompt.value,
+                        isSystemInstruction: currentPrompt.isSystemInstruction ?? false,
+                        createdAt: currentPrompt.createdAt
+                    };
+                    setPromptVersions(prev => [...prev, versionHistory]);
+                }
+
+                // プロンプトを更新（新しいバージョンとして）
+                setPrompts(prev => prev.map(p => 
+                    p.id === editedPrompt.id 
+                        ? {
+                            ...editedPrompt,
+                            version: (editedPrompt.version || 0) + 1,
+                            updatedAt: now
+                        }
+                        : p
+                ));
             } else {
-                return [...prev, editedPrompt];
+                // プロンプトを更新（バージョンは変更せず）
+                setPrompts(prev => prev.map(p => 
+                    p.id === editedPrompt.id 
+                        ? {
+                            ...editedPrompt,
+                            updatedAt: now
+                        }
+                        : p
+                ));
             }
-        });
-        setIsEditorOpen(false);
+        } else {
+            // 新規プロンプトの場合
+            const newPrompt: Prompt = {
+                ...editedPrompt,
+                version: 1,
+                createdAt: now,
+                updatedAt: now
+            };
+            setPrompts(prev => [...prev, newPrompt]);
+        }
+        
+        // 保存後にプロンプトを選択し直す
+        setSelectedPrompt(editedPrompt);
+        setIsEditorOpen(true);
     };
 
     const handleApiChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -206,6 +286,21 @@ const App: React.FC = () => {
         }
     }
 
+    // 新規プロンプト作成時の初期値を更新
+    const handleCreateNewPrompt = () => {
+        const now = new Date();
+        setSelectedPrompt({
+            id: (prompts.length + 1).toString(),
+            label: '新しいプロンプト',
+            value: '',
+            isSystemInstruction: true,
+            version: 1,
+            createdAt: now,
+            updatedAt: now
+        });
+        setIsEditorOpen(true);
+    };
+
     return (
         <div className="flex justify-center min-h-screen">
             <div className="w-full max-w-4xl flex flex-col h-screen">
@@ -214,15 +309,7 @@ const App: React.FC = () => {
                     <div className="flex justify-between items-center mb-4">
                         <h1 className="text-2xl font-bold">Prompt Selector</h1>
                         <Button
-                            onClick={() => {
-                                setSelectedPrompt({
-                                    id: (prompts.length + 1).toString(),
-                                    label: '新しいプロンプト',
-                                    value: '',
-                                    isSystemInstruction: true
-                                });
-                                setIsEditorOpen(true);
-                            }}
+                            onClick={handleCreateNewPrompt}
                             variant="outline"
                         >
                             新規プロンプト作成
@@ -312,6 +399,7 @@ const App: React.FC = () => {
                 isOpen={isEditorOpen}
                 onClose={() => setIsEditorOpen(false)}
                 onSave={handleSavePrompt}
+                versions={promptVersions.filter(v => selectedPrompt && v.promptId === selectedPrompt.id)}
             />
         </div>
     );
