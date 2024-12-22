@@ -3,8 +3,11 @@ import PromptSelector from './components/PromptSelector';
 import React, { useState } from 'react';
 import TextInput from './components/TextInput';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+
+type ApiType = 'gemini' | 'chatgpt';
 
 const App: React.FC = () => {
     const [responseText, setResponseText] = useState<string>('');
@@ -12,13 +15,20 @@ const App: React.FC = () => {
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [selectedApi, setSelectedApi] = useState<ApiType>('gemini');
 
     const prompts: Prompt[] = [
         { id: '1', label: '概念を説明する', value: '概念を説明してください:', isSystemInstruction: true },
         { id: '2', label: '要約を生成する', value: '要約を生成してください:', isSystemInstruction: true },
         { id: '3', label: '例を提供する', value: '例を提供してください:', isSystemInstruction: true },
-        { id: '4', label: 'コミットメッセージを生���する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
+        { id: '4', label: 'コミットメッセージを生成する', value: '以下の変更内容に対する簡潔で分かりやすいGitコミットメッセージを生成してください。コミットメッセージは、変更内容を端的に表現し、他の開発者が理解しやすい形式で書いてください:', isSystemInstruction: true },
     ];
+
+    const geminiClient = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? '');
+    const openaiClient = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY ?? '',
+        dangerouslyAllowBrowser: true
+    });
 
     const handlePromptSelect = (prompt: Prompt) => {
         console.log('Selected Prompt:', prompt);
@@ -32,6 +42,10 @@ const App: React.FC = () => {
             };
             setChatHistory(prev => [...prev, systemMessage]);
         }
+    };
+
+    const handleApiChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedApi(event.target.value as ApiType);
     };
 
     const handleTextSubmit = async (text: string) => {
@@ -50,7 +64,11 @@ const App: React.FC = () => {
         setChatHistory(prev => [...prev, userMessage]);
 
         try {
-            await generateText(text);
+            if (selectedApi === 'gemini') {
+                await generateTextGemini(text);
+            } else {
+                await generateTextChatGPT(text);
+            }
         } catch (error) {
             console.error('Error during text generation:', error);
             setResponseText('エラーが発生しました。');
@@ -67,11 +85,9 @@ const App: React.FC = () => {
         }
     };
 
-    const client = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? '');
-
-    async function generateText(text: string): Promise<void> {
+    async function generateTextGemini(text: string): Promise<void> {
         try {
-            const model = client.getGenerativeModel({ model: 'gemini-pro' });
+            const model = geminiClient.getGenerativeModel({ model: 'gemini-pro' });
 
             // チャット履歴を変換
             const convertedHistory = chatHistory.map(msg => ({
@@ -115,12 +131,65 @@ const App: React.FC = () => {
             setResponseText('Gemini APIとの通信中にエラーが発生しました。');
             throw error;
         }
-    };
+    }
+
+    async function generateTextChatGPT(text: string): Promise<void> {
+        try {
+            // チャット履歴を変換
+            const messages = chatHistory.map(msg => ({
+                role: msg.role,
+                content: msg.content
+            }));
+
+            messages.push({ role: 'user', content: text });
+
+            const completion = await openaiClient.chat.completions.create({
+                messages: messages,
+                model: 'gpt-3.5-turbo',
+            });
+
+            const responseText = completion.choices[0].message.content ?? '';
+            const totalTokens = completion.usage?.total_tokens ?? 0;
+
+            console.log('リクエスト:', JSON.stringify({ messages }, null, 2));
+            console.log('レスポンス:', JSON.stringify(completion, null, 2));
+            console.log('生成されたテキスト:', responseText);
+            console.log('トークン数:', totalTokens);
+
+            // Add assistant message to chat history
+            const assistantMessage: ChatMessage = {
+                role: 'assistant',
+                content: responseText,
+                timestamp: new Date()
+            };
+            setChatHistory(prev => [...prev, assistantMessage]);
+
+            setResponseText(responseText);
+            setTokenCount(totalTokens);
+        } catch (error) {
+            console.error('ChatGPT APIとの通信中にエラーが発生しました:', error);
+            setResponseText('ChatGPT APIとの通信中にエラーが発生しました。');
+            throw error;
+        }
+    }
 
     return (
         <div className="flex justify-center items-center min-h-screen">
             <div className="p-5 w-full max-w-4xl">
                 <h1 className="text-2xl font-bold mb-4">Prompt Selector</h1>
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        使用するAPI
+                    </label>
+                    <select
+                        value={selectedApi}
+                        onChange={handleApiChange}
+                        className="block w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
+                    >
+                        <option value="gemini">Gemini</option>
+                        <option value="chatgpt">ChatGPT</option>
+                    </select>
+                </div>
                 <PromptSelector prompts={prompts} onSelect={handlePromptSelect} />
                 <TextInput onSubmit={handleTextSubmit} disabled={isLoading} />
                 
@@ -192,15 +261,29 @@ const App: React.FC = () => {
                             <div className="bg-gray-100 p-4 rounded-md">
                                 <h4 className="font-bold">Request:</h4>
                                 <pre className="whitespace-pre-wrap overflow-x-auto">
-                                    {JSON.stringify({ 
-                                        contents: [
-                                            ...chatHistory.map(msg => ({
-                                                role: msg.role === 'assistant' ? 'model' : 'user',
-                                                parts: [{ text: msg.content }]
-                                            })),
-                                            { role: "user", parts: [{ text: inputText }] }
-                                        ]
-                                    }, null, 2)}
+                                    {JSON.stringify(
+                                        selectedApi === 'gemini'
+                                            ? {
+                                                contents: [
+                                                    ...chatHistory.map(msg => ({
+                                                        role: msg.role === 'assistant' ? 'model' : 'user',
+                                                        parts: [{ text: msg.content }]
+                                                    })),
+                                                    { role: "user", parts: [{ text: inputText }] }
+                                                ]
+                                            }
+                                            : {
+                                                messages: [
+                                                    ...chatHistory.map(msg => ({
+                                                        role: msg.role,
+                                                        content: msg.content
+                                                    })),
+                                                    { role: 'user', content: inputText }
+                                                ]
+                                            },
+                                        null,
+                                        2
+                                    )}
                                 </pre>
                                 <h4 className="font-bold mt-4">Response:</h4>
                                 <div className="prose prose-sm max-w-none">
