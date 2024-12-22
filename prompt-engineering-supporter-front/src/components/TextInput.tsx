@@ -29,19 +29,22 @@ const TextInput: React.FC<Props> = ({ onSubmit, disabled }) => {
     };
 
     return (
-        <div className="mt-4">
-            <Textarea
-                className="w-full"
-                value={text}
-                onChange={handleTextChange}
-                onKeyDown={handleKeyDown}
-                placeholder="ここにテキストを入力してください (Ctrl + Enter で送信)"
-                disabled={disabled}
-            />
+        <div className="flex gap-2 items-end">
+            <div className="flex-1">
+                <Textarea
+                    value={text}
+                    onChange={handleTextChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="ここにテキストを入力してください (Ctrl + Enter で送信)"
+                    disabled={disabled}
+                    className="resize-none min-h-[40px] py-2"
+                    rows={1}
+                />
+            </div>
             <Button
-                className="mt-2"
                 onClick={handleSubmit}
                 disabled={disabled || !text.trim()}
+                className="h-10 px-6"
             >
                 送信
             </Button>
