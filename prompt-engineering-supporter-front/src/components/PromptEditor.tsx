@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Prompt, PromptVersion } from '../types/Prompt';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
+import { diffChars } from 'diff';
 
 interface Props {
     prompt: Prompt | null;
@@ -13,8 +14,9 @@ interface Props {
 
 const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSave }) => {
     const [createNewVersion, setCreateNewVersion] = useState(false);
-    const [width, setWidth] = useState(384); // 初期幅: 384px (w-96)
+    const [width, setWidth] = useState(384);
     const [isResizing, setIsResizing] = useState(false);
+    const [selectedVersion, setSelectedVersion] = useState<PromptVersion | null>(null);
 
     const startResizing = useCallback((e: React.MouseEvent) => {
         setIsResizing(true);
@@ -28,7 +30,6 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
     const resize = useCallback((e: MouseEvent) => {
         if (isResizing) {
             const newWidth = window.innerWidth - e.clientX;
-            // 最小幅と最大幅を設定
             const clampedWidth = Math.min(Math.max(newWidth, 320), window.innerWidth * 0.8);
             setWidth(clampedWidth);
         }
@@ -56,7 +57,52 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
             value: formData.get('value') as string,
         };
         onSave(editedPrompt, createNewVersion);
-        setCreateNewVersion(false); // リセット
+        setCreateNewVersion(false);
+    };
+
+    const handleVersionSelect = (version: PromptVersion) => {
+        setSelectedVersion(version);
+    };
+
+    const renderDiff = () => {
+        if (!selectedVersion || !prompt) return null;
+
+        const diff = diffChars(selectedVersion.value, prompt.value);
+
+        return (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-bold mb-2">現在のバージョンとの差分</h4>
+                <div className="font-mono text-sm whitespace-pre-wrap bg-black text-white p-4 rounded">
+                    {diff.map((part, index) => {
+                        if (part.added) {
+                            return (
+                                <div key={index} className="text-green-400">
+                                    {part.value.split('\n').map((line, i) => (
+                                        <div key={`${index}-${i}`}>+ {line}</div>
+                                    ))}
+                                </div>
+                            );
+                        }
+                        if (part.removed) {
+                            return (
+                                <div key={index} className="text-red-400">
+                                    {part.value.split('\n').map((line, i) => (
+                                        <div key={`${index}-${i}`}>- {line}</div>
+                                    ))}
+                                </div>
+                            );
+                        }
+                        return (
+                            <div key={index} className="text-gray-300">
+                                {part.value.split('\n').map((line, i) => (
+                                    <div key={`${index}-${i}`}>  {line}</div>
+                                ))}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -64,7 +110,6 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
             className="fixed right-0 top-0 h-full bg-white shadow-lg overflow-hidden flex"
             style={{ width: `${width}px` }}
         >
-            {/* リサイズハンドル */}
             <div
                 className="w-1 h-full cursor-ew-resize bg-gray-200 hover:bg-gray-300 active:bg-gray-400"
                 onMouseDown={startResizing}
@@ -88,7 +133,7 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                ラ���ル
+                                ラベル
                             </label>
                             <input
                                 name="label"
@@ -128,7 +173,15 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
                         <h3 className="text-lg font-bold mb-4">バージョン履歴</h3>
                         <div className="space-y-4">
                             {versions.map((version) => (
-                                <div key={version.version} className="p-4 border rounded-lg">
+                                <div 
+                                    key={version.version} 
+                                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                        selectedVersion?.version === version.version
+                                            ? 'border-blue-500 bg-blue-50'
+                                            : 'hover:bg-gray-50'
+                                    }`}
+                                    onClick={() => handleVersionSelect(version)}
+                                >
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="font-medium">バージョン {version.version}</span>
                                         <span className="text-sm text-gray-500">
@@ -142,6 +195,7 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
                                 </div>
                             ))}
                         </div>
+                        {selectedVersion && renderDiff()}
                     </div>
                 )}
             </div>
