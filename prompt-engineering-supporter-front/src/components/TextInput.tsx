@@ -1,6 +1,7 @@
-import React from 'react';
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
+import React, { useState, useEffect } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import VoiceInput from './VoiceInput';
 
 interface Props {
     onSubmit: (text: string) => void;
@@ -8,11 +9,17 @@ interface Props {
 }
 
 const TextInput: React.FC<Props> = ({ onSubmit, disabled }) => {
-    const [text, setText] = React.useState('');
+    const [text, setText] = useState('');
+    const [isVoiceInput, setIsVoiceInput] = useState(false);
+    const [voiceBuffer, setVoiceBuffer] = useState('');
 
-    const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setText(event.target.value);
-    };
+    // 音声入力が終了したときに自動で送信
+    useEffect(() => {
+        if (!isVoiceInput && voiceBuffer.trim()) {
+            onSubmit(voiceBuffer);
+            setVoiceBuffer('');
+        }
+    }, [isVoiceInput, voiceBuffer, onSubmit]);
 
     const handleSubmit = () => {
         if (text.trim() && !disabled) {
@@ -28,26 +35,44 @@ const TextInput: React.FC<Props> = ({ onSubmit, disabled }) => {
         }
     };
 
+    const handleVoiceTranscript = (transcript: string, isFinal: boolean) => {
+        setIsVoiceInput(true);
+        if (isFinal) {
+            setVoiceBuffer(transcript);
+            setIsVoiceInput(false);
+        } else {
+            setText(transcript);
+        }
+    };
+
     return (
-        <div className="flex gap-2 items-end">
-            <div className="flex-1">
+        <div className="space-y-2">
+            <div className="flex items-center space-x-2 mb-2">
+                <VoiceInput
+                    onTranscript={handleVoiceTranscript}
+                    disabled={disabled}
+                />
+                <span className="text-sm text-gray-500">
+                    Ctrl + Enter で送信
+                </span>
+            </div>
+            <div className="flex space-x-2">
                 <Textarea
                     value={text}
-                    onChange={handleTextChange}
+                    onChange={(e) => setText(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="ここにテキストを入力してください (Ctrl + Enter で送信)"
-                    disabled={disabled}
-                    className="resize-none min-h-[40px] py-2"
-                    rows={1}
+                    placeholder={isVoiceInput ? "音声認識中..." : "メッセージを入力..."}
+                    disabled={disabled || isVoiceInput}
+                    className="flex-1"
+                    rows={3}
                 />
+                <Button
+                    onClick={handleSubmit}
+                    disabled={!text.trim() || disabled || isVoiceInput}
+                >
+                    送信
+                </Button>
             </div>
-            <Button
-                onClick={handleSubmit}
-                disabled={disabled || !text.trim()}
-                className="h-10 px-6"
-            >
-                送信
-            </Button>
         </div>
     );
 };

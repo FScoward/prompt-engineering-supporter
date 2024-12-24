@@ -215,30 +215,34 @@ const App: React.FC = () => {
                 ],
             };
 
-            // Generate content
-            const generationResult = await model.generateContent(request);
-            const response = await generationResult.response;
-            const responseText = response.text();
-
-            // Count tokens
-            const tokenCountResult = await model.countTokens(request);
-            const totalTokens = tokenCountResult.totalTokens;
-
-            console.log('リクエスト:', JSON.stringify(request, null, 2));
-            console.log('レスポンス:', JSON.stringify(response, null, 2));
-            console.log('生成されたテキスト:', responseText);
-            console.log('トークン数:', totalTokens);
-
-            // Add assistant message to chat history
+            // ストリーミングレスポンスを生成
+            const result = await model.generateContentStream(request);
+            
+            // アシスタントメッセージを作成（空の状態から開始）
             const assistantMessage: ChatMessage = {
                 role: 'assistant',
-                content: responseText,
+                content: '',
                 timestamp: new Date()
             };
             setChatHistory(prev => [...prev, assistantMessage]);
 
-            setResponseText(responseText);
-            setTokenCount(totalTokens);
+            let fullResponse = '';
+            for await (const chunk of result.stream) {
+                const chunkText = chunk.text();
+                fullResponse += chunkText;
+                
+                // チャット履歴の最後のメッセージを更新
+                setChatHistory(prev => {
+                    const newHistory = [...prev];
+                    const lastMessage = newHistory[newHistory.length - 1];
+                    if (lastMessage.role === 'assistant') {
+                        lastMessage.content = fullResponse;
+                    }
+                    return newHistory;
+                });
+            }
+
+            setResponseText(fullResponse);
         } catch (error) {
             console.error('Gemini APIとの通信中にエラーが発生しました:', error);
             setResponseText('Gemini APIとの通信中にエラーが発生しました。');
