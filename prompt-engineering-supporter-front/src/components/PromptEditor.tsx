@@ -16,7 +16,7 @@ interface Props {
 
 const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSave }) => {
     const [createNewVersion, setCreateNewVersion] = useState(false);
-    const [width, setWidth] = useState(384);
+    const [width, setWidth] = useState(window.innerWidth * 0.7);
     const [isResizing, setIsResizing] = useState(false);
     const [selectedVersion, setSelectedVersion] = useState<PromptVersion | null>(null);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -55,6 +55,15 @@ const PromptEditor: React.FC<Props> = ({ prompt, versions, isOpen, onClose, onSa
             window.removeEventListener('mouseup', stopResizing);
         };
     }, [isResizing, resize, stopResizing]);
+
+    React.useEffect(() => {
+        const handleResize = () => {
+            setWidth(window.innerWidth * 0.7);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     if (!isOpen || !prompt) return null;
 
