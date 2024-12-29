@@ -1,13 +1,14 @@
-import { Prompt, ChatMessage, PromptVersion } from './types/Prompt';
-import PromptSelector from './components/PromptSelector';
-import PromptEditor from './components/PromptEditor';
-import React, { useState, useRef, useEffect } from 'react';
-import TextInput from './components/TextInput';
+import { ChatMessage, Prompt, PromptVersion } from './types/Prompt';
+import React, { useEffect, useRef, useState } from 'react';
+
+import { Button } from './components/ui/button';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
+import PromptEditor from './components/PromptEditor';
+import PromptSelector from './components/PromptSelector';
 import ReactMarkdown from 'react-markdown';
+import TextInput from './components/TextInput';
 import remarkGfm from 'remark-gfm';
-import { Button } from './components/ui/button';
 
 type ApiType = 'gemini' | 'chatgpt';
 
@@ -74,31 +75,6 @@ const App: React.FC = () => {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [chatHistory]);
-
-    const handlePromptSelect = (prompt: Prompt) => {
-        // 表示と履歴をクリア
-        setResponseText('');
-        setTokenCount(0);
-        setChatHistory([]);
-        setInputText('');
-
-        // プロンプトエディタを開く
-        setSelectedPrompt(prompt);
-        setIsEditorOpen(false); // 一度閉じる
-        setTimeout(() => {
-            setIsEditorOpen(true); // 再度開く
-        }, 0);
-
-        // システムプロンプトを設定
-        if (prompt.isSystemInstruction) {
-            const systemMessage: ChatMessage = {
-                role: 'system',
-                content: prompt.value,
-                timestamp: new Date()
-            };
-            setChatHistory([systemMessage]);
-        }
-    };
 
     const handleSavePrompt = (editedPrompt: Prompt, createNewVersion: boolean) => {
         const now = new Date();
@@ -332,7 +308,13 @@ const App: React.FC = () => {
                             <option value="chatgpt">ChatGPT</option>
                         </select>
                     </div>
-                    <PromptSelector prompts={prompts} onSelect={handlePromptSelect} />
+                    <PromptSelector
+                        prompts={prompts}
+                        onEdit={(prompt) => {
+                            setSelectedPrompt(prompt);
+                            setIsEditorOpen(true);
+                        }}
+                    />
                 </div>
 
                 {/* チャット履歴（スクロール可能な領域） */}
