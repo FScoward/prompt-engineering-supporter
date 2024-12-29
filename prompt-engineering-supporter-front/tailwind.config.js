@@ -56,8 +56,6 @@ export default {
   	}
   },
   plugins: [
-    tailwindcssAnimate,
-    require('@tailwindcss/typography'),
+    tailwindcssAnimate
   ],
 }
-
