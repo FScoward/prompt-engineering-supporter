@@ -1,5 +1,3 @@
-export type ApiType = "gemini" | "chatgpt";
-
 export interface Prompt {
   id: string;
   label: string;
@@ -11,7 +9,7 @@ export interface Prompt {
 }
 
 export interface ChatMessage {
-  role: "user" | "assistant" | "system";
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
 }
