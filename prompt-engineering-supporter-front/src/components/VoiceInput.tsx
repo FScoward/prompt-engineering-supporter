@@ -1,7 +1,5 @@
- 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-
-import { Button } from "@/components/ui/button";
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface Props {
     onTranscript: (text: string, isFinal: boolean) => void;
@@ -46,7 +44,6 @@ const VoiceInput: React.FC<Props> = ({ onTranscript, disabled }) => {
     const [isListening, setIsListening] = useState(false);
     const [error, setError] = useState<string>('');
     const recognitionRef = useRef<SpeechRecognition | null>(null);
-    const buttonRef = useRef<HTMLButtonElement>(null);
 
     const startListening = useCallback(() => {
         if (!('webkitSpeechRecognition' in window)) {
@@ -104,47 +101,37 @@ const VoiceInput: React.FC<Props> = ({ onTranscript, disabled }) => {
         setIsListening(false);
     }, []);
 
-    const handleKeyDown = useCallback((event: KeyboardEvent) => {
-        if (event.code === 'Space' && !event.repeat && !disabled && !isListening) {
-            event.preventDefault();
-            startListening();
-        }
-    }, [disabled, isListening, startListening]);
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.code === 'Space' && !event.repeat && !disabled && !isListening) {
+                event.preventDefault();
+                startListening();
+            }
+        };
 
-    const handleKeyUp = useCallback((event: KeyboardEvent) => {
-        if (event.code === 'Space') {
-            event.preventDefault();
-            stopListening();
-        }
-    }, [stopListening]);
+        const handleKeyUp = (event: KeyboardEvent) => {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                stopListening();
+            }
+        };
 
-    const handleFocus = useCallback(() => {
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', handleKeyUp);
-    }, [handleKeyDown, handleKeyUp]);
 
-    const handleBlur = useCallback(() => {
-        window.removeEventListener('keydown', handleKeyDown);
-        window.removeEventListener('keyup', handleKeyUp);
-    }, [handleKeyDown, handleKeyUp]);
-
-    useEffect(() => {
-        const button = buttonRef.current;
-        if (button) {
-            button.addEventListener('focus', handleFocus);
-            button.addEventListener('blur', handleBlur);
-
-            return () => {
-                button.removeEventListener('focus', handleFocus);
-                button.removeEventListener('blur', handleBlur);
-            };
-        }
-    }, [handleFocus, handleBlur]);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+                recognitionRef.current = null;
+            }
+        };
+    }, [disabled, isListening, startListening, stopListening]);
 
     return (
         <div className="flex items-center space-x-2">
             <Button
-                ref={buttonRef}
                 type="button"
                 onMouseDown={startListening}
                 onMouseUp={stopListening}
@@ -181,4 +168,4 @@ const VoiceInput: React.FC<Props> = ({ onTranscript, disabled }) => {
     );
 };
 
-export default VoiceInput;
+export default VoiceInput; 
