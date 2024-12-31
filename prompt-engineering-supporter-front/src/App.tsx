@@ -159,6 +159,21 @@ const App: React.FC = () => {
         setSelectedApi(event.target.value as ApiType);
     };
 
+    const generateText = async (text: string, chatHistory: ChatMessage[]) => {
+        try {
+            let response: string;
+            if (selectedApi === 'gemini') {
+                response = await generateTextGemini(text, chatHistory);
+            } else {
+                response = await generateTextChatGPT(text, chatHistory);
+            }
+            return response;
+        } catch (error: unknown) {
+            console.error('Error during text generation:', error);
+            throw error; // エラーを再スローして呼び出し元で処理する
+        }
+    };
+
     const handleTextSubmit = async (text: string) => {
         setInputText(text);
         console.log('Submitted Text:', text);
@@ -172,23 +187,13 @@ const App: React.FC = () => {
         setChatHistory(prev => [...prev, userMessage]);
 
         try {
-            if (selectedApi === 'gemini') {
-                const response = await generateTextGemini(text, chatHistory);
-                const assistantMessage: ChatMessage = {
-                    role: 'assistant',
-                    content: response,
-                    timestamp: new Date()
-                };
-                setChatHistory(prev => [...prev, assistantMessage]);
-            } else {
-                const response = await generateTextChatGPT(text, chatHistory);
-                const assistantMessage: ChatMessage = {
-                    role: 'assistant',
-                    content: response,
-                    timestamp: new Date()
-                };
-                setChatHistory(prev => [...prev, assistantMessage]);
-            }
+            const response = await generateText(text, chatHistory);
+            const assistantMessage: ChatMessage = {
+                role: 'assistant',
+                content: response,
+                timestamp: new Date()
+            };
+            setChatHistory(prev => [...prev, assistantMessage]);
         } catch (error: unknown) {
             console.error('Error during text generation:', error);
             const errorMessage: ChatMessage = {
