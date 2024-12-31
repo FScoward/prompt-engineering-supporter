@@ -53,18 +53,6 @@ const App: React.FC = () => {
   return (
     <div className="flex justify-center min-h-screen">
       <div className="w-full max-w-4xl flex flex-col h-screen">
-        {/* ヘッダー部分とプロンプト管理 */}
-        <PromptManagement
-          prompts={prompts}
-          promptVersions={promptVersions}
-          selectedPrompt={selectedPrompt}
-          isEditorOpen={isEditorOpen}
-          onPromptSelect={handlePromptSelect}
-          onSavePrompt={handleSavePrompt}
-          onCreateNewPrompt={handleCreateNewPrompt}
-          onCloseEditor={handleCloseEditor}
-        />
-
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             使用するAPI
@@ -78,6 +66,18 @@ const App: React.FC = () => {
             <option value="chatgpt">ChatGPT</option>
           </select>
         </div>
+
+        {/* ヘッダー部分とプロンプト管理 */}
+        <PromptManagement
+          prompts={prompts}
+          promptVersions={promptVersions}
+          selectedPrompt={selectedPrompt}
+          isEditorOpen={isEditorOpen}
+          onPromptSelect={handlePromptSelect}
+          onSavePrompt={handleSavePrompt}
+          onCreateNewPrompt={handleCreateNewPrompt}
+          onCloseEditor={handleCloseEditor}
+        />
 
         {/* チャット履歴と入力欄 */}
         <ChatContainer
