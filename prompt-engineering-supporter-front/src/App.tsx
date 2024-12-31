@@ -1,13 +1,15 @@
-import { Prompt, ChatMessage, PromptVersion } from './types/Prompt';
-import PromptSelector from './components/PromptSelector';
-import PromptEditor from './components/PromptEditor';
-import React, { useState, useRef, useEffect } from 'react';
-import TextInput from './components/TextInput';
+import { ChatMessage, Prompt, PromptVersion } from './types/Prompt';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+
+import { Button } from './components/ui/button';
+import { ChatHistory } from './components/ChatHistory';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
+import PromptEditor from './components/PromptEditor';
+import PromptSelector from './components/PromptSelector';
 import ReactMarkdown from 'react-markdown';
+import TextInput from './components/TextInput';
 import remarkGfm from 'remark-gfm';
-import { Button } from './components/ui/button';
 
 type ApiType = 'gemini' | 'chatgpt';
 
@@ -74,6 +76,10 @@ const App: React.FC = () => {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [chatHistory]);
+
+    const chatHistoryComponent = useMemo(() => (
+        <ChatHistory chatHistory={chatHistory} isLoading={isLoading} />
+    ), [chatHistory, isLoading]);
 
     const handlePromptSelect = (prompt: Prompt) => {
         // 表示と履歴をクリア
@@ -333,63 +339,9 @@ const App: React.FC = () => {
                         </select>
                     </div>
                     <PromptSelector prompts={prompts} onSelect={handlePromptSelect} />
-                </div>
-
                 {/* チャット履歴（スクロール可能な領域） */}
                 <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4">
-                    <div className="space-y-4">
-                        {chatHistory.map((message, index) => (
-                            <div
-                                key={index}
-                                className={`p-4 rounded-lg ${
-                                    message.role === 'user'
-                                        ? 'bg-blue-100 ml-auto'
-                                        : message.role === 'system'
-                                        ? 'bg-yellow-100'
-                                        : 'bg-gray-100'
-                                } max-w-3xl`}
-                            >
-                                <div className="flex items-center mb-2">
-                                    <span className="font-bold">
-                                        {message.role === 'user' 
-                                            ? 'You' 
-                                            : message.role === 'system'
-                                            ? 'System'
-                                            : 'Assistant'}
-                                    </span>
-                                    <span className="text-sm text-gray-500 ml-2">
-                                        {message.timestamp.toLocaleTimeString()}
-                                    </span>
-                                </div>
-                                <div className="prose prose-sm max-w-none">
-                                    <ReactMarkdown 
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            pre: ({ children, ...props }) => (
-                                                <div className="overflow-auto bg-gray-800 text-white p-4 rounded-md my-2">
-                                                    <pre {...props}>{children}</pre>
-                                                </div>
-                                            ),
-                                            code: ({ children, className, ...props }) => {
-                                                const isInline = !className;
-                                                return isInline 
-                                                    ? <code className="bg-gray-200 px-1 rounded" {...props}>{children}</code>
-                                                    : <code {...props}>{children}</code>;
-                                            }
-                                        }}
-                                    >
-                                        {message.content}
-                                    </ReactMarkdown>
-                                </div>
-                            </div>
-                        ))}
-                        {isLoading && (
-                            <div className="flex items-center justify-center p-4 bg-gray-50 rounded-lg">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                                <span className="ml-3">応答を生成中...</span>
-                            </div>
-                        )}
-                    </div>
+                    {chatHistoryComponent}
                 </div>
 
                 {/* 入力欄（画面下部に固定） */}
@@ -406,6 +358,7 @@ const App: React.FC = () => {
                 versions={promptVersions.filter(v => selectedPrompt && v.promptId === selectedPrompt.id)}
             />
         </div>
+    </div>
     );
 };
 
